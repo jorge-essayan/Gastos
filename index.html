@@ -1,0 +1,402 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Control de Gastos</title>
+  
+  <!-- Icono y PWA Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3135/3135706.png">
+  <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3135/3135706.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between p-4 max-w-md mx-auto antialiased pb-8">
+
+  <!-- Header -->
+  <header class="mb-4 pt-2">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight text-slate-900">Registrar Gasto</h1>
+        <p class="text-xs font-medium text-slate-500">Planilla de Gastos Inteligente</p>
+      </div>
+      <div id="mepBadge" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs px-2.5 py-1 rounded-full font-semibold">
+        MEP: <span id="mepValue">$0</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Notificaciones -->
+  <div id="alertBox" class="hidden mb-4 p-4 rounded-xl border text-sm flex items-start gap-3 transition-all duration-300">
+    <span id="alertIcon" class="text-lg"></span>
+    <div id="alertText" class="flex-1 font-medium"></div>
+  </div>
+
+  <!-- Formulario -->
+  <form id="expenseForm" class="space-y-4" onsubmit="handleSubmit(event)">
+    
+    <!-- Monto y Moneda -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80">
+      <div class="flex items-center justify-between mb-2">
+        <label for="monto" class="text-xs font-semibold uppercase tracking-wider text-slate-400">Monto</label>
+        <div class="inline-flex p-0.5 bg-slate-100 rounded-lg text-xs font-semibold">
+          <button type="button" id="btnARS" onclick="setMoneda('ARS')" class="px-3 py-1 rounded-md bg-white shadow-xs text-slate-900">ARS</button>
+          <button type="button" id="btnUSD" onclick="setMoneda('USD')" class="px-3 py-1 rounded-md text-slate-500 hover:text-slate-800">USD</button>
+        </div>
+      </div>
+      <div class="relative flex items-center">
+        <span id="currencySymbol" class="text-3xl font-bold text-slate-400 mr-2">$</span>
+        <input 
+          type="number" 
+          step="any" 
+          inputmode="decimal" 
+          id="monto" 
+          required 
+          placeholder="0" 
+          class="w-full text-4xl font-extrabold tracking-tight text-slate-900 focus:outline-none placeholder-slate-200"
+          oninput="actualizarPreviewCuotas()"
+        >
+      </div>
+    </div>
+
+    <!-- Descripción y Fecha -->
+    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80 space-y-3">
+      <div>
+        <label for="descripcion" class="block text-xs font-medium text-slate-500 mb-1">Descripción / Comercio</label>
+        <input 
+          type="text" 
+          id="descripcion" 
+          placeholder="Ej. Supermercado, Picada, Nafta..." 
+          class="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+        >
+      </div>
+
+      <div>
+        <label for="fecha" class="block text-xs font-medium text-slate-500 mb-1">Fecha</label>
+        <input 
+          type="date" 
+          id="fecha" 
+          required 
+          class="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700"
+        >
+      </div>
+    </div>
+
+    <!-- Categoría y Cuenta -->
+    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80 space-y-3">
+      <div>
+        <label for="categoria" class="block text-xs font-medium text-slate-500 mb-1">Categoría</label>
+        <select 
+          id="categoria" 
+          required 
+          class="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700"
+        >
+          <option value="">Cargando categorías...</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="cuenta" class="block text-xs font-medium text-slate-500 mb-1">Cuenta / Medio de Pago</label>
+        <select 
+          id="cuenta" 
+          required 
+          class="w-full px-3.5 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold text-slate-800"
+        >
+          <option value="">Cargando cuentas...</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Sección de Cuotas -->
+    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80">
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="text-sm font-semibold text-slate-800">¿Compra en Cuotas?</span>
+          <p class="text-xs text-slate-400">Prorratea meses futuros en la planilla</p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="checkCuotas" class="sr-only peer" onchange="toggleCuotas()">
+          <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+        </label>
+      </div>
+
+      <div id="cuotasFields" class="hidden mt-4 pt-3 border-t border-slate-100 space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="cuotas" class="block text-xs font-medium text-slate-500 mb-1">Cant. Cuotas</label>
+            <input 
+              type="number" 
+              id="cuotas" 
+              value="1" 
+              min="1" 
+              max="36" 
+              class="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-sm font-semibold text-center focus:bg-white focus:outline-none"
+              oninput="actualizarPreviewCuotas()"
+            >
+          </div>
+          <div>
+            <label for="interes" class="block text-xs font-medium text-slate-500 mb-1">% Interés Total</label>
+            <input 
+              type="number" 
+              step="any" 
+              id="interes" 
+              value="0" 
+              min="0" 
+              placeholder="0%" 
+              class="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-sm font-semibold text-center focus:bg-white focus:outline-none"
+              oninput="actualizarPreviewCuotas()"
+            >
+          </div>
+        </div>
+
+        <div id="previewCuotasBox" class="bg-blue-50/70 p-3 rounded-xl border border-blue-100 text-xs text-blue-800 flex justify-between items-center">
+          <span>Valor mensual:</span>
+          <span id="valorCuotaCalculado" class="font-bold text-sm text-blue-900">$0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botón Registrar -->
+    <button 
+      type="submit" 
+      id="submitBtn" 
+      class="w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-semibold rounded-2xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 transition-all duration-200 text-base"
+    >
+      <span id="btnText">Registrar Gasto</span>
+      <div id="btnSpinner" class="hidden w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+    </button>
+  </form>
+
+  <footer class="mt-6 text-center text-xs text-slate-400">
+    Conectado a Google Sheets
+  </footer>
+
+  <script>
+    // URL DE LA API DE GOOGLE APPS SCRIPT
+    const API_URL = "https://script.google.com/macros/s/AKfycbxNGrU9PLDvQCJd5rEYz8e-I--OmRXsukkCv7C8hm3KYj5pMVFMXkOfeTBKTxKXvqKB/exec";
+
+    let tiposMap = {};
+    let mepActual = 1400;
+    let monedaActual = 'ARS';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const hoy = new Date().toISOString().split('T')[0];
+      document.getElementById('fecha').value = hoy;
+
+      // Cargar categorías y cuentas mediante fetch
+      fetch(API_URL + "?action=getData")
+        .then(res => res.json())
+        .then(data => cargarDatosIniciales(data))
+        .catch(err => showAlert('error', 'Error al cargar datos: ' + err.message));
+    });
+
+    function cargarDatosIniciales(data) {
+      if (!data || !data.success) {
+        showAlert('error', 'No se pudieron cargar las configuraciones.');
+        return;
+      }
+
+      tiposMap = data.tiposMap || {};
+      mepActual = data.mepActual || 1400;
+
+      if (data.mepActual > 0) {
+        document.getElementById('mepValue').textContent = '$' + Math.round(data.mepActual).toLocaleString('es-AR');
+        document.getElementById('mepBadge').classList.remove('hidden');
+      }
+
+      // Categorías
+      const catSelect = document.getElementById('categoria');
+      catSelect.innerHTML = '<option value="">Selecciona categoría</option>';
+      data.categorias.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.nombre;
+        opt.textContent = c.nombre;
+        catSelect.appendChild(opt);
+      });
+
+      // Cuentas (con 'Efectivo' preseleccionado por defecto)
+      const ctaSelect = document.getElementById('cuenta');
+      ctaSelect.innerHTML = '';
+      data.cuentas.forEach(cta => {
+        const opt = document.createElement('option');
+        opt.value = cta;
+        opt.textContent = cta;
+        if (cta.trim().toLowerCase() === 'efectivo') {
+          opt.selected = true;
+        }
+        ctaSelect.appendChild(opt);
+      });
+      ctaSelect.value = 'Efectivo';
+    }
+
+    function setMoneda(m) {
+      monedaActual = m;
+      const btnARS = document.getElementById('btnARS');
+      const btnUSD = document.getElementById('btnUSD');
+      const sym = document.getElementById('currencySymbol');
+
+      if (m === 'ARS') {
+        btnARS.className = 'px-3 py-1 rounded-md bg-white shadow-xs text-slate-900';
+        btnUSD.className = 'px-3 py-1 rounded-md text-slate-500 hover:text-slate-800';
+        sym.textContent = '$';
+      } else {
+        btnUSD.className = 'px-3 py-1 rounded-md bg-white shadow-xs text-slate-900';
+        btnARS.className = 'px-3 py-1 rounded-md text-slate-500 hover:text-slate-800';
+        sym.textContent = 'u$s';
+      }
+      actualizarPreviewCuotas();
+    }
+
+    function toggleCuotas() {
+      const isChecked = document.getElementById('checkCuotas').checked;
+      const box = document.getElementById('cuotasFields');
+      if (isChecked) {
+        box.classList.remove('hidden');
+        if (document.getElementById('cuotas').value <= 1) {
+          document.getElementById('cuotas').value = 3;
+        }
+      } else {
+        box.classList.add('hidden');
+        document.getElementById('cuotas').value = 1;
+        document.getElementById('interes').value = 0;
+      }
+      actualizarPreviewCuotas();
+    }
+
+    function actualizarPreviewCuotas() {
+      const monto = parseFloat(document.getElementById('monto').value) || 0;
+      const isCuotas = document.getElementById('checkCuotas').checked;
+      const cuotas = isCuotas ? (parseInt(document.getElementById('cuotas').value, 10) || 1) : 1;
+      const interes = parseFloat(document.getElementById('interes').value) || 0;
+
+      const total = monto * (1 + interes / 100);
+      const porCuota = total / cuotas;
+
+      const sym = monedaActual === 'USD' ? 'u$s ' : '$ ';
+      document.getElementById('valorCuotaCalculado').textContent = sym + Math.round(porCuota).toLocaleString('es-AR');
+    }
+
+    function handleSubmit(e) {
+      e.preventDefault();
+      
+      const monto = parseFloat(document.getElementById('monto').value);
+      if (isNaN(monto) || monto <= 0) {
+        showAlert('error', 'Ingresa un monto válido.');
+        return;
+      }
+
+      setLoading(true);
+
+      const catSeleccionada = document.getElementById('categoria').value;
+      const tipo = tiposMap[catSeleccionada] || 'Variable';
+      const isCuotas = document.getElementById('checkCuotas').checked;
+
+      const payload = {
+        fecha: document.getElementById('fecha').value,
+        monto: monto,
+        moneda: monedaActual,
+        descripcion: document.getElementById('descripcion').value,
+        categoria: catSeleccionada,
+        cuenta: document.getElementById('cuenta').value,
+        tipo: tipo,
+        cuotas: isCuotas ? (parseInt(document.getElementById('cuotas').value, 10) || 1) : 1,
+        interes: isCuotas ? (parseFloat(document.getElementById('interes').value) || 0) : 0,
+        mepReferencia: mepActual
+      };
+
+      // Envío vía POST simple a la API de Apps Script
+      fetch(API_URL, {
+        method: 'POST',
+        mode: 'no-cors', // Permite enviar sin conflicto CORS a Apps Script
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(() => {
+        setLoading(false);
+        showAlert('success', payload.cuotas > 1 
+          ? '¡Gasto registrado en ' + payload.cuotas + ' cuotas exitosamente!' 
+          : '¡Gasto registrado con éxito!');
+        resetForm();
+      })
+      .catch(err => {
+        setLoading(false);
+        showAlert('error', 'Error al enviar: ' + err.message);
+      });
+    }
+
+    function resetForm() {
+      document.getElementById('monto').value = '';
+      document.getElementById('descripcion').value = '';
+      if (document.getElementById('checkCuotas').checked) {
+        document.getElementById('checkCuotas').checked = false;
+        toggleCuotas();
+      }
+      document.getElementById('cuenta').value = 'Efectivo';
+      document.getElementById('monto').focus();
+    }
+
+    function setLoading(isLoading) {
+      const btn = document.getElementById('submitBtn');
+      const text = document.getElementById('btnText');
+      const spinner = document.getElementById('btnSpinner');
+
+      btn.disabled = isLoading;
+      if (isLoading) {
+        btn.classList.add('opacity-75', 'cursor-not-allowed');
+        text.textContent = 'Guardando...';
+        spinner.classList.remove('hidden');
+      } else {
+        btn.classList.remove('opacity-75', 'cursor-not-allowed');
+        text.textContent = 'Registrar Gasto';
+        spinner.classList.add('hidden');
+      }
+    }
+
+    function showAlert(type, message) {
+      const box = document.getElementById('alertBox');
+      const icon = document.getElementById('alertIcon');
+      const text = document.getElementById('alertText');
+
+      box.classList.remove('hidden', 'bg-emerald-50', 'border-emerald-200', 'text-emerald-800', 'bg-rose-50', 'border-rose-200', 'text-rose-800');
+
+      if (type === 'success') {
+        box.classList.add('bg-emerald-50', 'border-emerald-200', 'text-emerald-800');
+        icon.textContent = '✅';
+      } else {
+        box.classList.add('bg-rose-50', 'border-rose-200', 'text-rose-800');
+        icon.textContent = '⚠️';
+      }
+
+      text.textContent = message;
+      box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      if (type === 'success') {
+        setTimeout(() => {
+          box.classList.add('hidden');
+        }, 4000);
+      }
+    }
+  </script>
+</body>
+</html>
